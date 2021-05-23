@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+
+ Stack for testing API Key and Usage Plan
+
+Parameters:
+  s3Bucket:
+    Type: String
+    Description: The name of bucket where assets will be stored.
+  deploymentRegion:
+    Type: String
+    Description: The region where app will be deployed.      
+  deploymentEnvironment:
+    Type: String
+    Description: The value of deployment environment required for stage of API
+  iamRole:
+    Type: String
+    AllowedPattern: arn:(aws[a-zA-Z-]*)?:iam::\d{12}:role/?[a-zA -Z_0-9+=,.@\-_/]+
+    Description: The ARN of role for all Lambda Functions.
+  apiRequestsAllowed:
+    Type: String
+    Description: The number of requests allowed per month.
+
+Resources:
+  TestUsagePlanAPIKEY:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref deploymentEnvironment
+      Auth:
+        ApiKeyRequired: 'true'
+        
+  LanguageDetectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: test-language-detection-dev
+      Role: !Ref iamRole
+      Description: Lambda function that to test language detection
+      CodeUri: CODE_URI_PATH
+      Handler: index.handler
+      Runtime: nodejs14.x
+      Timeout: 120
+      Events:
+        TESTRESTAPI:
+          Type: Api
+          Properties:
+            Path: /v1/languages
+            Method: post
+            RestApiId:
+              Ref: TestUsagePlanAPIKEY        
+
+  TestAPIUsagePlan:
+    Type: 'AWS::ApiGateway::UsagePlan'
+    DependsOn:
+      - TestUsagePlanAPIStage
+    Properties:
+      ApiStages:
+        - ApiId: !Ref TestUsagePlanAPIKEY
+          Stage: !Ref deploymentEnvironment
+      Description: To test usage plan and api key in REST API.
+      Quota:
+        Limit: 100
+        Period: MONTH
+      UsagePlanName: "test-usage-plan"
+      
+  TestApiAccessKey:
+    Type: 'AWS::ApiGateway::ApiKey'
+    DependsOn:
+      - TestUsagePlanAPIStage
+    Properties:
+      Name: "test-api-key"
+    Description: To test usage plan and api key in REST API.
+      Tags: 
+       - Key: Mode
+         Value: Learning
+      Enabled: true
+      StageKeys:
+       - RestApiId: !Ref TestUsagePlanAPIKEY
+         StageName: !Ref deploymentEnvironment
+         
+  LinkUsagePlanApiKey:
+    Type: "AWS::ApiGateway::UsagePlanKey"
+    Properties:
+      KeyId: 
+       Ref: TestApiAccessKey
+      KeyType: API_KEY
+      UsagePlanId: 
+       Ref: TestAPIUsagePlan
+ 
+Outputs:
+  APIDetails:
+    Description: "API Gateway host and stage for endpoint URL"
+    Value: !Sub "https://${TestUsagePlanAPIKEY}.execute-api.${AWS::Region}.amazonaws.com/${deploymentEnvironment}/dev/v1/languages/"
