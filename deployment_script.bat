@@ -4,7 +4,7 @@ SET STACK_NAME=test-usage-plan-api-key-stack
 SET S3_FOLDER=GreenPath/%DEPLOYMENT_ENVIRONMENT%/code/
 SET S3_BUCKET = test_bucket
 SET API_REQUESTS_ALLOWED = 100
-SET iamRole = LAMBDA_ROLE_ARN
+SET IAM_ROLE = LAMBDA_ROLE_ARN
 echo Local properties for deployment set successfully....
 
 echo #########################################################################
